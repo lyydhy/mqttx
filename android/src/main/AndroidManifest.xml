@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.mqttx.com.mqttx">
+
+    <application>
+        <service android:name="info.mqtt.android.service.MqttService"></service>
+<!--        <service-->
+<!--            android:name=".MqttClient"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="true"-->
+<!--            tools:ignore="Instantiatable"></service>-->
+    </application>
+</manifest>
