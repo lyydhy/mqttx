@@ -18,21 +18,55 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   String _platformVersion = 'Unknown';
   bool isConnected = false;
   final _mqttxPlugin = Mqttx();
+  String messageText = '';
+
+  @override
+  void deactivate() {
+    super.deactivate();
+    WidgetsBinding.instance.removeObserver(this);
+  }
 
   @override
   void initState() {
     super.initState();
-    _mqttxPlugin.createClient(MqttxConfig(
-        server: 'mqtt.dev.xl.lezhiwl.top',
-        port: 13269,
-        clientId: 'flutter_mqttx_example',
-        keepAlive: 120));
+    WidgetsBinding.instance.addObserver(this);
+    connectMqtt();
+  }
+
+  void connectMqtt() async {
+    try {
+      bool isC = await _mqttxPlugin.isConnected();
+      if (isC) {
+        setState(() {
+          isConnected = true;
+
+        });
+        _mqttxPlugin.onMessage = (topic, message) {
+          print("接收到消息  ${topic} --- ${message}");
+          setState(() {
+            messageText = message;
+          });
+
+        };
+        return;
+      }
+    } catch (e) {}
+    _mqttxPlugin.createClient(
+      MqttxConfig(
+          server: 'tcp://.top',
+          port: 13269,
+          clientId: 'flutter_mqttx_example',
+          keepAlive: 120),
+    );
     _mqttxPlugin.onMessage = (topic, message) {
       print("接收到消息  ${topic} --- ${message}");
+      setState(() {
+        messageText = message;
+      });
     };
     _mqttxPlugin.onConnected = () {
       print("连接成功 ");
@@ -72,6 +106,28 @@ class _MyAppState extends State<MyApp> {
       SubscribeParam(
           topic: 'userInsideMsgTopic:c8d391483dad4954b88fcab8597e1540'),
     ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _mqttxPlugin.isConnected().then((value) {
+          if (!value) {
+            _mqttxPlugin.reconnect();
+          }
+        });
+        break;
+      case AppLifecycleState.inactive:
+        break;
+      case AppLifecycleState.paused:
+        break;
+      case AppLifecycleState.detached:
+        break;
+      case AppLifecycleState.hidden:
+      // TODO: Handle this case.
+    }
   }
 
   Future<void> unSubribe() async {
@@ -115,18 +171,29 @@ class _MyAppState extends State<MyApp> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  var a = {"load": "测试"};
+                  var a = {"load": "测试", "random": DateTime.now().toString()};
                   var b = jsonEncode(a);
                   _mqttxPlugin.publish('GameAll', b, qos: MqttxQos.exactlyOnce);
                 },
                 child: Text("发布消息"),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  _mqttxPlugin.disconnect();
-                },
-                child: Text("断开连接"),
-              )
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      _mqttxPlugin.disconnect();
+                    },
+                    child: Text("断开连接"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      connectMqtt();
+                    },
+                    child: Text("连接"),
+                  )
+                ],
+              ),
+              Text("消息:  ${messageText}")
             ],
           ),
         ),
