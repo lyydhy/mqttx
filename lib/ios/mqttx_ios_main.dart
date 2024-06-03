@@ -45,7 +45,7 @@ class MqttxIosMain implements MqttxInterface {
   @override
   Future<void> connected({dynamic data, String? code}) async {
     if (_config.onConnected != null) {
-      _config.onConnected!('success');
+      _config.onConnected!();
     }
   }
 
