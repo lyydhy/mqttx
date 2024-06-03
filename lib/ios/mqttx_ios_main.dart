@@ -23,18 +23,12 @@ class MqttxIosMain implements MqttxInterface {
     _config = config;
     _mqttServerClient =
         MqttServerClient.withPort(config.server, config.clientId, config.port);
-    _mqttServerClient.logging(on: true);
+    // _mqttServerClient.logging(on: true);
     _mqttServerClient.autoReconnect = config.autoReconnect;
     _mqttServerClient.keepAlivePeriod = config.keepAlive;
     _mqttServerClient.onSubscribed = onSubscribed;
     _mqttServerClient.onSubscribeFail = onSubscribeFail;
     _mqttServerClient.onUnsubscribed = onUnSubscribe;
-    _mqttServerClient.onConnected = () {
-      if (_config.onConnected != null) {
-        _config.onConnected!();
-      }
-      _mqttServerClient.updates?.listen(onMessageList);
-    };
     _mqttServerClient.onDisconnected = () {
       if (_config.onDisconnected != null) {
         _config.onDisconnected!();
@@ -44,9 +38,11 @@ class MqttxIosMain implements MqttxInterface {
 
   @override
   Future<void> connected({dynamic data, String? code}) async {
+
     if (_config.onConnected != null) {
-      _config.onConnected!('success');
+      _config.onConnected!();
     }
+    _mqttServerClient.updates.listen(onMessageList);
   }
 
   @override
@@ -139,9 +135,15 @@ class MqttxIosMain implements MqttxInterface {
 
   @override
   Future<void> publish(String topic, String message,
-      {MqttxQos qos = MqttxQos.atLeastOnce}) async {
+      {MqttxQos qos = MqttxQos.atLeastOnce, bool isAutoToUtf8 = true}) async {
     var builder = MqttPayloadBuilder();
-    builder.addString(message);
+    if (isAutoToUtf8) {
+      var b = const Utf8Encoder().convert(message);
+      builder.addString(String.fromCharCodes(b));
+    } else {
+      builder.addString(message);
+    }
+
     MqttQos qos1 = MqttQos.exactlyOnce;
     if (qos.value == 0) {
       qos1 = MqttQos.atMostOnce;
@@ -152,19 +154,18 @@ class MqttxIosMain implements MqttxInterface {
     return;
   }
 
+  void onMessageList(List<MqttReceivedMessage<MqttMessage>> msgList) {
 
-  onMessageList(List<MqttReceivedMessage<MqttMessage>> msgList) {
-    MqttPublishMessage msg = msgList[0].payload as MqttPublishMessage;
     try {
+      print("收到消息");
+      MqttPublishMessage msg = msgList[0].payload as MqttPublishMessage;
       String payload = const Utf8Decoder().convert(msg.payload.message!!);
       String topic = msgList[0].topic!!;
       if (_config.onMessage != null) {
         _config.onMessage!(topic, payload);
       }
-    } catch (e)
-    {
+    } catch (e) {
       print(e);
     }
-
   }
 }

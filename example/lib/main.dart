@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -25,11 +27,10 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _mqttxPlugin.createClient(MqttxConfig(
-      server: 'tcp://mqtt.dev.xl.lezhiwl.top',
-      port: 13269,
-      clientId: 'flutter_mqttx_example',
-      keepAlive: 120
-    ));
+        server: 'mqtt.dev.xl.lezhiwl.top',
+        port: 13269,
+        clientId: 'flutter_mqttx_example',
+        keepAlive: 120));
     _mqttxPlugin.onMessage = (topic, message) {
       print("接收到消息  ${topic} --- ${message}");
     };
@@ -50,6 +51,12 @@ class _MyAppState extends State<MyApp> {
     };
     _mqttxPlugin.onUnSubscribed = (topic) {
       print("取消订阅成功 ${topic}");
+    };
+    _mqttxPlugin.onDisconnected = () {
+      print("断开链接");
+      setState(() {
+        isConnected = false;
+      });
     };
 
     _mqttxPlugin.connect().then((value) {});
@@ -108,8 +115,9 @@ class _MyAppState extends State<MyApp> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  _mqttxPlugin.publish('GameAll', "测试",
-                      qos: MqttxQos.exactlyOnce);
+                  var a = {"load": "测试"};
+                  var b = jsonEncode(a);
+                  _mqttxPlugin.publish('GameAll', b, qos: MqttxQos.exactlyOnce);
                 },
                 child: Text("发布消息"),
               ),
