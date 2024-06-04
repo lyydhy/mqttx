@@ -51,6 +51,9 @@ class MqttxConfig {
   /// 断开连接
   late Function? onDisconnected = null;
 
+  /// 重连成功
+  late Function? onReconnected = null;
+
   MqttxConfig({
     required String clientId,
     required String server,

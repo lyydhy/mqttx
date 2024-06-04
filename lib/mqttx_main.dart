@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mqttx/windows/mqttx_windows_main.dart';
 import 'android/mqttx_android_main.dart';
 import 'ios/mqttx_ios_main.dart';
 import 'mqttx_config.dart';
@@ -16,8 +17,7 @@ class Mqttx {
     } else if (Platform.isAndroid) {
       client = MqttxAndroidMain();
     } else if (Platform.isWindows) {
-      // 因为现在 window 和 ios 都是使用的 dart层的mqtt 所以直接使用ios的实现
-      client = MqttxIosMain();
+      client = MqttxWindowsMain();
     }
     client!.initConfig(config);
     return this;
@@ -89,5 +89,9 @@ class Mqttx {
 
   set onDisconnected(Function disconnected) {
     _clientConfig.onDisconnected = disconnected;
+  }
+
+  set onReconnected(Function reconnected) {
+    _clientConfig.onReconnected = reconnected;
   }
 }

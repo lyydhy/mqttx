@@ -302,6 +302,7 @@ class MqttClient {
     fun reconnect(result: MethodChannel.Result) {
         if (mqttClient != null) {
             try {
+
                 mqttClient!!.reconnect()
 //                result.success(true)
             } catch (e: MqttException) {

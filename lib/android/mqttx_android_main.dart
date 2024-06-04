@@ -44,10 +44,16 @@ class MqttxAndroidMain implements MqttxInterface {
             _config.onDisconnected!();
           }
         case 'reconnect':
-          if (code == 'success' && _subscribedTopics.isNotEmpty) {
-            // 重新订阅
-            MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
+          if (code == 'success') {
+            if (_config.onReconnected != null) {
+              _config.onReconnected!();
+            }
+            if (_subscribedTopics.isNotEmpty) {
+              // 重新订阅
+              MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
+            }
           }
+          break;
       }
     }).onError((error) {
       print(error);
