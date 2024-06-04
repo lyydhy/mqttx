@@ -1,18 +1,28 @@
 package com.mqttx.com.mqttx
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.content.ContextCompat.startForegroundService
 import info.mqtt.android.service.Ack
+import info.mqtt.android.service.MqttAndroidClient
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
-import info.mqtt.android.service.MqttAndroidClient;
-import io.flutter.plugin.common.MethodChannel
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
 
 class MqttClient {
@@ -55,19 +65,37 @@ class MqttClient {
             clientId!!,
             Ack.AUTO_ACK
         )
+//            .apply {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                setForegroundService(buildNotification(_activity!!.applicationContext))
+//            }
+//
+//        }
 
 
         val options = MqttConnectOptions()
         options.keepAliveInterval = keepAlive!!
         options.connectionTimeout = connectionTimeout!!
-        options.isAutomaticReconnect = autoReconnect!!
-
+        options.isAutomaticReconnect = autoReconnect == true
 //        options.isCleanSession = true
 
         try {
-            mqttClient!!.setCallback(object : MqttCallback {
+            mqttClient!!.setCallback(object : MqttCallbackExtended {
+
                 override fun connectionLost(cause: Throwable?) {
-                    print("消息接收失败1")
+                    println("断开异");
+                    val result = mapOf<String, Any?>(
+                        "type" to "disconnect",
+                        "code" to "success",
+                        "data" to null,
+                        "message" to "mqtt disconnected msg: ${cause?.message}"
+                    )
+                    // 断开连接
+                    _activity!!.runOnUiThread {
+                        eventSink?.success(
+                            result
+                        )
+                    }
                 }
 
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -87,6 +115,28 @@ class MqttClient {
                 }
 
                 override fun deliveryComplete(token: IMqttDeliveryToken?) {
+                }
+
+                override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                    if (mqttClient?.isConnected == true) {
+                        if (reconnect) {
+                            _activity!!.runOnUiThread {
+                                eventSink?.success(
+                                    mapOf<String, Any?>(
+                                        "type" to "reconnect",
+                                        "code" to "success",
+                                        "data" to null,
+                                        "message" to "mqtt reconnected"
+                                    )
+                                )
+
+                            }
+                            println("重连成功")
+                        }
+
+                    } else if (reconnect) {
+                        println("重连失败")
+                    }
                 }
 
             })
@@ -253,13 +303,13 @@ class MqttClient {
         if (mqttClient != null) {
             try {
                 mqttClient!!.reconnect()
-                result.success(true)
+//                result.success(true)
             } catch (e: MqttException) {
                 e.printStackTrace()
-                result.success(false)
+//                result.success(false)
             }
         } else {
-            result.success(false)
+//            result.success(false)
         }
     }
 
@@ -278,6 +328,7 @@ class MqttClient {
                                 mapOf<String, Any?>(
                                     "type" to "disconnect",
                                     "code" to "success",
+                                    "message" to "mqtt disconnected"
                                 )
                             )
                         }
@@ -330,5 +381,48 @@ class MqttClient {
             }
         }
 
+    }
+
+    // 构建一个notification
+    @SuppressLint("NewApi")
+    private fun buildNotification(context: Context): Notification {
+        val notificationManager: NotificationManager = context.getSystemService(
+            Context.NOTIFICATION_SERVICE
+        ) as NotificationManager
+        val channel: NotificationChannel = NotificationChannel(
+            "mqttx",
+            "蜗蜗语音",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        notificationManager.createNotificationChannel(channel)
+//
+//        val notification: Notification = new NotificationCompat.Builder(context, "mqttx")
+//            .setSmallIcon(  context.resources.getIdentifier(
+//            "ic_launcher",
+//            "mipmap",
+//            context.packageName
+//        ))
+//            .setContentTitle("蜗蜗语音")
+//            .setContentText("正在后台运行")
+//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+//            .setContentIntent(pit)
+//            .build()
+
+        val it: Intent = Intent(context, _activity!!.javaClass)
+        val pit = PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_MUTABLE)
+        val mBuilder: Notification.Builder = Notification.Builder(context, "mqttx");
+        mBuilder
+            .setSubText("正在后台运行")
+            .setContentTitle("蜗蜗语音")
+            .setContentIntent(pit)
+            .setSmallIcon(
+                context.resources.getIdentifier(
+                    "ic_launcher",
+                    "mipmap",
+                    context.packageName
+                )
+            )
+
+        return mBuilder.build()
     }
 }

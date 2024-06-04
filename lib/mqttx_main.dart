@@ -7,7 +7,7 @@ import 'mqttx_interface.dart';
 
 class Mqttx {
   late MqttxConfig _clientConfig;
-  late MqttxInterface client;
+  late MqttxInterface? client = null;
 
   Mqttx createClient(MqttxConfig config) {
     _clientConfig = config;
@@ -19,37 +19,44 @@ class Mqttx {
       // 因为现在 window 和 ios 都是使用的 dart层的mqtt 所以直接使用ios的实现
       client = MqttxIosMain();
     }
-    client.initConfig(config);
+    client!.initConfig(config);
     return this;
   }
 
   Future<void> connect() async {
-    client.connect();
+    if (client != null) {
+      client!.connect();
+    }
   }
 
   Future<void> subscribe(List<SubscribeParam> subscribeParams) async {
-    client.subscribe(subscribeParams);
+    if (client != null) {
+      client!.subscribe(subscribeParams);
+    }
   }
 
   Future<void> unSubscribe(List<String> topics) async {
-    client.unSubscribe(topics);
+    if (client != null) {
+      client!.unSubscribe(topics);
+    }
   }
 
   Future<void> reconnect() async {
-    client.reconnect();
+    client?.reconnect();
   }
 
   Future<void> disconnect() async {
-    client.disconnect();
+    client?.disconnect();
   }
 
   Future<bool> isConnected() async {
-    return client.isConnected();
+    if (client == null) return false;
+    return await client!.isConnected();
   }
 
   Future<void> publish(String topic, String message,
       {MqttxQos qos = MqttxQos.atLeastOnce}) async {
-    client.publish(topic, message, qos: qos);
+    client?.publish(topic, message, qos: qos);
   }
 
   set clientId(String clientId) {

@@ -7,6 +7,9 @@ import 'MqttxPlatformByAndoird.dart';
 class MqttxAndroidMain implements MqttxInterface {
   static const EventChannel _eventChannel = EventChannel('mqttx/android/event');
 
+  // 所有已经订阅的主题
+  List<SubscribeParam> _subscribedTopics = [];
+
   // 接收来自原生代码的异步事件
   static Stream<dynamic> get receiveBroadcastStream =>
       _eventChannel.receiveBroadcastStream();
@@ -39,6 +42,11 @@ class MqttxAndroidMain implements MqttxInterface {
         case 'disconnect':
           if (_config.onDisconnected != null) {
             _config.onDisconnected!();
+          }
+        case 'reconnect':
+          if (code == 'success' && _subscribedTopics.isNotEmpty) {
+            // 重新订阅
+            MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
           }
       }
     }).onError((error) {
@@ -79,6 +87,13 @@ class MqttxAndroidMain implements MqttxInterface {
 
   @override
   Future<void> subscribe(List<SubscribeParam> subscribeParams) async {
+    subscribeParams.forEach((element) {
+      if (_subscribedTopics
+              .indexWhere((element1) => element.topic == element1.topic) ==
+          -1) {
+        _subscribedTopics.add(element);
+      }
+    });
     MqttxPlatformByAndroid.instance.subscribe(subscribeParams);
   }
 
@@ -100,7 +115,7 @@ class MqttxAndroidMain implements MqttxInterface {
     if (_config.onSubscribeFail != null) {
       if (code == 'fail') {
         if (data != null && data is Map) {
-          _config.onConnectFail!(
+          _config.onSubscribeFail!(
             SubscribeParam(
               topic: data['topic'],
               qos: MqttQosExtension.fromValue(data['qos']),
@@ -113,6 +128,7 @@ class MqttxAndroidMain implements MqttxInterface {
 
   @override
   Future<void> unSubscribe(List<String> topics) async {
+    _subscribedTopics.removeWhere((element) => topics.contains(element.topic));
     MqttxPlatformByAndroid.instance.unSubscribe(topics);
     return;
   }
@@ -125,6 +141,7 @@ class MqttxAndroidMain implements MqttxInterface {
 
   @override
   Future<void> disconnect() async {
+    _subscribedTopics = [];
     MqttxPlatformByAndroid.instance.disconnect();
     return;
   }

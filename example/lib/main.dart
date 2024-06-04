@@ -57,9 +57,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } catch (e) {}
     _mqttxPlugin.createClient(
       MqttxConfig(
-          server: 'tcp://.top',
+          server: 'tcp://top',
           port: 13269,
-          clientId: 'flutter_mqttx_example',
+          clientId: 'flutter_mqttx_example_' + DateTime.now().millisecondsSinceEpoch.toString(),
           keepAlive: 120),
     );
     _mqttxPlugin.onMessage = (topic, message) {

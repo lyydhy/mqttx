@@ -3,6 +3,7 @@
         android:label="mqttx_example"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <service android:name="info.mqtt.android.service.MqttService" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -46,6 +47,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 
 </manifest>

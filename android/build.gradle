@@ -60,7 +60,7 @@ android {
 //        implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
 //        implementation 'com.github.hannesa2:paho.mqtt.android:4.3.beta3'
 //        implementation 'com.android.support:support-v4:30.4.1'
-        implementation 'com.github.hannesa2:paho.mqtt.android:4.3.beta3'
+        implementation 'com.github.hannesa2:paho.mqtt.android:4.2.3'
 
         implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 

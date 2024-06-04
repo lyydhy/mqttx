@@ -3,7 +3,7 @@
     package="com.mqttx.com.mqttx">
 
     <application>
-        <service android:name="info.mqtt.android.service.MqttService"></service>
+        <service android:name="info.mqtt.android.service.MqttService" />
 <!--        <service-->
 <!--            android:name=".MqttClient"-->
 <!--            android:enabled="true"-->
