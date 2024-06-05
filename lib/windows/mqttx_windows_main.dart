@@ -29,6 +29,11 @@ class MqttxWindowsMain implements MqttxInterface {
     _mqttServerClient.onSubscribed = onSubscribed;
     _mqttServerClient.onSubscribeFail = onSubscribeFail;
     _mqttServerClient.onUnsubscribed = onUnSubscribe;
+    _mqttServerClient.onAutoReconnected = () {
+      if (_config.onReconnected != null) {
+        _config.onReconnected!();
+      }
+    };
     _mqttServerClient.onDisconnected = () {
       if (_config.onDisconnected != null) {
         _config.onDisconnected!();

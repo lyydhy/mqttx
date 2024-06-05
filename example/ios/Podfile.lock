@@ -1,14 +1,26 @@
 PODS:
+  - CocoaMQTT (2.1.6):
+    - CocoaMQTT/Core (= 2.1.6)
+  - CocoaMQTT/Core (2.1.6):
+    - MqttCocoaAsyncSocket (~> 1.0.8)
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
+  - MqttCocoaAsyncSocket (1.0.8)
   - mqttx (0.0.1):
+    - CocoaMQTT
     - Flutter
 
 DEPENDENCIES:
+  - CocoaMQTT
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - mqttx (from `.symlinks/plugins/mqttx/ios`)
+
+SPEC REPOS:
+  trunk:
+    - CocoaMQTT
+    - MqttCocoaAsyncSocket
 
 EXTERNAL SOURCES:
   Flutter:
@@ -19,10 +31,12 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/mqttx/ios"
 
 SPEC CHECKSUMS:
+  CocoaMQTT: 1f206228b29318eabdacad0c2e4e88575922c27a
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 13825b8a9334a850581300559b8839134b124670
-  mqttx: f65be13386742a2a846e7427f4c799be0f7ae8ca
+  MqttCocoaAsyncSocket: 77d3b74f76228dd5a05d1f9526eab101d415b30c
+  mqttx: 77127f3180e035d6f2428452a47c5ca18a9cf384
 
-PODFILE CHECKSUM: 6e700dec67e6deac9b1c69bb14c49a2217a12d15
+PODFILE CHECKSUM: 5b7a35ebb24ac241ca13d298b4df7439479dc17e
 
 COCOAPODS: 1.15.0

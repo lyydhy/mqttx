@@ -1,19 +1,69 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:mqtt5_client/mqtt5_client.dart';
 import 'package:mqtt5_client/mqtt5_server_client.dart';
+import 'package:mqttx/ios/MqttxPlatformByIos.dart';
 import '../mqttx_config.dart';
 import '../mqttx_interface.dart' hide MqttQos;
 
 class MqttxIosMain implements MqttxInterface {
+  static const EventChannel _eventChannel = EventChannel('mqttx/ios/event');
   late MqttServerClient _mqttServerClient;
   late MqttxConfig _config;
+
+  // 接收来自原生代码的异步事件
+  static Stream<dynamic> get receiveBroadcastStream =>
+      _eventChannel.receiveBroadcastStream();
+
+  MqttxIosMain() {
+    receiveBroadcastStream.listen((event) {
+      String type = event['type'];
+      dynamic data = event['data'];
+      String? code = event['code'];
+      String? message = event['message'];
+      switch (type) {
+        case 'connect':
+          connected(code: code, data: message);
+          break;
+        case 'subscribe':
+          dynamic qos = event['qos'];
+          subscribeCallback(code, data, message, qos);
+          break;
+        case 'unSubscribe':
+          if (code == 'success' && _config.onUnSubscribed != null) {
+            _config.onUnSubscribed!(data);
+          }
+          break;
+        case 'message':
+          if (_config.onMessage != null && data != null) {
+            _config.onMessage!(data['topic'], data['message']);
+          }
+        case 'disconnect':
+          if (_config.onDisconnected != null) {
+            _config.onDisconnected!();
+          }
+        case 'reconnect':
+          if (code == 'success') {
+            if (_config.onReconnected != null) {
+              _config.onReconnected!();
+            }
+            // if (_subscribedTopics.isNotEmpty) {
+            //   // 重新订阅
+            //   MqttxPlatformByIos.instance.subscribe(_subscribedTopics);
+            // }
+          }
+          break;
+      }
+    }).onError((error) {
+      print(error);
+    });
+  }
 
   @override
   Future<MqttxConnectionStatus?> connect() async {
     // TODO: implement connect
-    _mqttServerClient.onConnected = connected;
-    await _mqttServerClient.connect();
+    MqttxPlatformByIos.instance.connect(_config);
     return null;
   }
 
@@ -21,75 +71,59 @@ class MqttxIosMain implements MqttxInterface {
   void initConfig(MqttxConfig config) {
     // TODO: implement initConfig
     _config = config;
-    _mqttServerClient =
-        MqttServerClient.withPort(config.server, config.clientId, config.port);
-    // _mqttServerClient.logging(on: true);
-    _mqttServerClient.autoReconnect = config.autoReconnect;
-    _mqttServerClient.keepAlivePeriod = config.keepAlive;
-    _mqttServerClient.onSubscribed = onSubscribed;
-    _mqttServerClient.onSubscribeFail = onSubscribeFail;
-    _mqttServerClient.onUnsubscribed = onUnSubscribe;
-    _mqttServerClient.onDisconnected = () {
-      if (_config.onDisconnected != null) {
-        _config.onDisconnected!();
-      }
-    };
   }
 
   @override
   Future<void> connected({dynamic data, String? code}) async {
-
     if (_config.onConnected != null) {
       _config.onConnected!();
     }
-    _mqttServerClient.updates.listen(onMessageList);
   }
 
   @override
   Future<bool> isConnected() async {
-    // TODO: implement isConnected
-    return _mqttServerClient.connectionStatus!.state ==
-        MqttConnectionState.connected;
+    bool isConnected = await MqttxPlatformByIos.instance.isConnected();
+    return isConnected;
   }
 
   @override
   Future<void> subscribe(List<SubscribeParam> subscribeParams) async {
-    for (SubscribeParam topic in subscribeParams) {
-      MqttQos qos = MqttQos.failure;
-      if (topic.qos.value == 0) {
-        qos = MqttQos.atMostOnce;
-      } else if (topic.qos.value == 1) {
-        qos = MqttQos.atLeastOnce;
-      } else if (topic.qos.value == 2) {
-        qos = MqttQos.exactlyOnce;
-      }
-      _mqttServerClient.subscribe(topic.topic, qos);
-    }
+    MqttxPlatformByIos.instance.subscribe(subscribeParams);
   }
 
   @override
   Future<void> unSubscribe(List<String> topics) async {
-    for (var element in topics) {
-      _mqttServerClient.unsubscribeStringTopic(element);
-    }
+    // _subscribedTopics.removeWhere((element) => topics.contains(element.topic));
+    MqttxPlatformByIos.instance.unSubscribe(topics);
     return;
   }
 
-  // 订阅成功
-  void onSubscribed(MqttSubscription? subscription) {
+  // 订阅成功或者失败
+  void subscribeCallback(String? code, dynamic data, String? message,
+      dynamic qos) {
     if (_config.onSubscribed != null) {
-      int qos = 0;
-      if (subscription?.maximumQos == MqttQos.atMostOnce) {
-        qos = 0;
-      } else if (subscription?.maximumQos == MqttQos.atLeastOnce) {
-        qos = 1;
-      } else if (subscription?.maximumQos == MqttQos.exactlyOnce) {
-        qos = 2;
+      if (code == 'success') {
+        if (data != null && data is Map) {
+          _config.onSubscribed!(
+            SubscribeParam(
+              topic: data['topic'],
+              qos: MqttQosExtension.fromValue(data['qos']),
+            ),
+          );
+        }
       }
-
-      _config.onSubscribed!(SubscribeParam(
-          topic: subscription?.topic.rawTopic ?? "",
-          qos: MqttQosExtension.fromValue(qos)));
+    }
+    if (_config.onSubscribeFail != null) {
+      if (code == 'fail') {
+        if (data != null && data is Map) {
+          _config.onSubscribeFail!(
+            SubscribeParam(
+              topic: data['topic'],
+              qos: MqttQosExtension.fromValue(data['qos']),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -123,49 +157,21 @@ class MqttxIosMain implements MqttxInterface {
 
   @override
   Future<void> reconnect() async {
-    _mqttServerClient.doAutoReconnect();
+    MqttxPlatformByIos.instance.reconnect();
     return;
   }
 
   @override
   Future<void> disconnect() async {
-    _mqttServerClient.disconnect();
+    MqttxPlatformByIos.instance.disconnect();
     return;
   }
 
   @override
   Future<void> publish(String topic, String message,
       {MqttxQos qos = MqttxQos.atLeastOnce, bool isAutoToUtf8 = true}) async {
-    var builder = MqttPayloadBuilder();
-    if (isAutoToUtf8) {
-      var b = const Utf8Encoder().convert(message);
-      builder.addString(String.fromCharCodes(b));
-    } else {
-      builder.addString(message);
-    }
-
-    MqttQos qos1 = MqttQos.exactlyOnce;
-    if (qos.value == 0) {
-      qos1 = MqttQos.atMostOnce;
-    } else if (qos.value == 1) {
-      qos1 = MqttQos.atLeastOnce;
-    }
-    _mqttServerClient.publishMessage(topic, qos1, builder.payload!);
+    MqttxPlatformByIos.instance.publish(topic, message, qos.value);
     return;
   }
 
-  void onMessageList(List<MqttReceivedMessage<MqttMessage>> msgList) {
-
-    try {
-      print("收到消息");
-      MqttPublishMessage msg = msgList[0].payload as MqttPublishMessage;
-      String payload = const Utf8Decoder().convert(msg.payload.message!!);
-      String topic = msgList[0].topic!!;
-      if (_config.onMessage != null) {
-        _config.onMessage!(topic, payload);
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
 }
