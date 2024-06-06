@@ -140,8 +140,8 @@ class MqttxAndroidMain implements MqttxInterface {
   }
 
   @override
-  Future<void> reconnect() async {
-    MqttxPlatformByAndroid.instance.reconnect();
+  Future<void> reconnect({String? clientId}) async {
+    MqttxPlatformByAndroid.instance.reconnect(clientId: clientId);
     return;
   }
 

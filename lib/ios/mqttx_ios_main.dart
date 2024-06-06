@@ -164,8 +164,8 @@ class MqttxIosMain implements MqttxInterface {
   }
 
   @override
-  Future<void> reconnect() async {
-    MqttxPlatformByIos.instance.reconnect();
+  Future<void> reconnect({String? clientId}) async {
+    MqttxPlatformByIos.instance.reconnect(clientId: clientId);
     return;
   }
 

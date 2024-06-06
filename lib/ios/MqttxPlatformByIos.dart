@@ -33,7 +33,7 @@ abstract class MqttxPlatformByIos extends PlatformInterface {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 
-  Future<void> reconnect() {
+  Future<void> reconnect({String? clientId}) {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 

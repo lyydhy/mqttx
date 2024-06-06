@@ -39,7 +39,7 @@ public class MqttxPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         MqttClient.instance.unSubscribe(call: call, eventSink: self.eventSink)
         break
     case "reconnect":
-        MqttClient.instance.reconnect(eventSink: self.eventSink)
+        MqttClient.instance.reconnect(call: call, eventSink: self.eventSink)
         break
     case "disconnect":
         MqttClient.instance.disconnect(eventSink: self.eventSink)

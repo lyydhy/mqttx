@@ -25,7 +25,7 @@ abstract class MqttxInterface {
   Future<void> disconnect();
 
   /// 重连
-  Future<void> reconnect();
+  Future<void> reconnect({String? clientId});
 
   /// 发送消息
   Future<void> publish(String topic, String message,

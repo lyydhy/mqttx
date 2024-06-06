@@ -36,6 +36,7 @@ class MqttClient {
     private var server: String? = null
     private var port: Int? = null
     private var clientId: String? = null
+    private val connectData: Map<String, Any?> = mapOf()
 
     companion object {
         val instance: MqttClient by lazy { MqttClient() }

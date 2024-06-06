@@ -127,7 +127,7 @@ class MqttxWindowsMain implements MqttxInterface {
   }
 
   @override
-  Future<void> reconnect() async {
+  Future<void> reconnect({String? clientId}) async {
     _mqttServerClient.doAutoReconnect();
     return;
   }

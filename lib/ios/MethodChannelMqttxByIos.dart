@@ -43,8 +43,8 @@ class MethodChannelMqttxByIos extends MqttxPlatformByIos {
   }
 
   @override
-  Future<void> reconnect() async {
-    methodChannel.invokeMethod('reconnect');
+  Future<void> reconnect({String? clientId}) async {
+    methodChannel.invokeMethod('reconnect', {"clientId": clientId});
     return;
   }
 
