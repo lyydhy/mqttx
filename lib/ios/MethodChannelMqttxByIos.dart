@@ -36,6 +36,16 @@ class MethodChannelMqttxByIos extends MqttxPlatformByIos {
     return;
   }
 
+
+  @override
+  Future<void> unSubscribeByReSubscribe(
+      List<SubscribeParam> subscribeParams) async {
+    List<Map<String, dynamic>> topics = subscribeParams
+        .map((e) => {"topic": e.topic, "qos": e.qos.value})
+        .toList();
+    methodChannel.invokeMapMethod('unSubscribeByReSubscribe', {"topics": topics});
+  }
+
   @override
   Future<void> disconnect() async {
     methodChannel.invokeMethod('disconnect');

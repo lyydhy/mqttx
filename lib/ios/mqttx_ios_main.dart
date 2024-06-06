@@ -51,7 +51,7 @@ class MqttxIosMain implements MqttxInterface {
             }
             if (_subscribedTopics.isNotEmpty) {
               // 重新订阅
-              MqttxPlatformByIos.instance.subscribe(_subscribedTopics);
+              MqttxPlatformByIos.instance.unSubscribeByReSubscribe(_subscribedTopics);
             }
           }
           break;
