@@ -90,7 +90,7 @@ class MqttClient {
         options.keepAliveInterval = keepAlive!!
         options.connectionTimeout = connectionTimeout!!
         options.isAutomaticReconnect = autoReconnect == true
-//        options.isCleanSession = true
+        options.isCleanSession = true
 
         try {
             mqttClient!!.setCallback(object : MqttCallbackExtended {

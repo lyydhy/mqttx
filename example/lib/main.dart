@@ -57,7 +57,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } catch (e) {}
     _mqttxPlugin.createClient(
       MqttxConfig(
-          server: '',
+          server: 'tcp://',
           port: 13269,
           clientId: 'flutter_mqttx_example_' + DateTime.now().millisecondsSinceEpoch.toString(),
           keepAlive: 120),
@@ -116,7 +116,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         _mqttxPlugin.isConnected().then((value) {
           if (!value) {
-            _mqttxPlugin.reconnect();
+            _mqttxPlugin.reconnect(clientId: 'flutter_mqttx_example_' + DateTime.now().millisecondsSinceEpoch.toString());
           }
         });
         break;
