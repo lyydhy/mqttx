@@ -8,7 +8,7 @@
 import Foundation
 import CocoaMQTT
 import Flutter
-
+var isFirstConnect: Bool = true
 class MqttClient {
     // 单例
     static let instance = MqttClient()
@@ -28,9 +28,7 @@ class MqttClient {
     private var connectData: [String: Any?] = [:]
     // 取消订阅并且重连数据
     private var unSubscribeByReSubscribe: [[String: Any]] = []
-    // 是否是第一次连接
-    private var isFirstConnect: Bool = true
-    
+
     
     /**
       连接mqtt服务
@@ -42,7 +40,7 @@ class MqttClient {
         if (mqttClient != nil) {
             return;
         }
-        self.isFirstConnect = true
+        isFirstConnect = true
         let args = call.arguments as!  [String: Any]
         let server =  args["server"] as? String
         let port = args["port"] as? UInt16
@@ -65,7 +63,10 @@ class MqttClient {
         mqttClient = CocoaMQTT5(clientID: clientId!, host: server!, port: port!)
         mqttClient!.keepAlive = keepAlive!
         mqttClient!.autoReconnect = autoReconnect == true
-        mqttClient!.delegate = self
+        mqttClient!.delegate = MqttClient.instance
+//        mqttClient!.didReceiveMessage = {mqtt : Mq, message: CocoaMQTT5Message, id in
+//
+//        }
         let isConnect =  mqttClient!.connect()
         print(isConnect)
     }
@@ -254,14 +255,16 @@ class MqttClient {
 extension MqttClient: CocoaMQTT5Delegate {
     func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
         if (ack == CocoaMQTTCONNACKReasonCode.success) {
-            if (!self.isFirstConnect) {
-                self.isFirstConnect = false
-                self.isReconnect = true
+            print("连接成功", isFirstConnect, MqttClient.instance.isReconnect)
+            if (!isFirstConnect) {
+                isFirstConnect = false
+                MqttClient.instance.isReconnect = true
             }
-            self.createResult(type: self.isReconnect ? "reconnect" : "connect", isSuccess: true, message: nil, data: nil)
+            self.createResult(type: MqttClient.instance.isReconnect ? "reconnect" : "connect", isSuccess: true, message: nil, data: nil)
         } else {
-            self.createResult(type: self.isReconnect ? "reconnect" : "connect", isSuccess: false, message: self.isReconnect ? "重连失败" : "连接失败", data: nil)
+            self.createResult(type: MqttClient.instance.isReconnect ? "reconnect" : "connect", isSuccess: false, message: MqttClient.instance.isReconnect ? "重连失败" : "连接失败", data: nil)
         }
+        isFirstConnect = false
         self.isReconnect = false
     }
     func mqtt5(_ mqtt5: CocoaMQTT5, didPublishMessage message: CocoaMQTT5Message, id: UInt16) {
