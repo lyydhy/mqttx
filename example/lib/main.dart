@@ -57,7 +57,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } catch (e) {}
     _mqttxPlugin.createClient(
       MqttxConfig(
-          server: 'tcp://',
+          server: 'tcp://mqtt.dev.xl.lezhiwl.top',
           port: 13269,
           clientId: 'flutter_mqttx_example_' + DateTime.now().millisecondsSinceEpoch.toString(),
           keepAlive: 120),
@@ -93,6 +93,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         messageText = "";
       });
     };
+    _mqttxPlugin.onReconnected = () {
+      print("重连成功");
+      setState(() {
+        isConnected = true;
+      });
+    };
 
     _mqttxPlugin.connect().then((value) {});
   }
@@ -114,8 +120,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     switch (state) {
       case AppLifecycleState.resumed:
+
         _mqttxPlugin.isConnected().then((value) {
           if (!value) {
+            print("执行重连");
             _mqttxPlugin.reconnect(clientId: 'flutter_mqttx_example_' + DateTime.now().millisecondsSinceEpoch.toString());
           }
         });

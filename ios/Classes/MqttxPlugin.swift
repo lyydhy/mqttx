@@ -46,6 +46,9 @@ public class MqttxPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     case "publish":
         MqttClient.instance.publish(call: call, eventSink: self.eventSink)
         break
+    case "unSubscribeByReSubscribe":
+        MqttClient.instance.unSubscribeByReSubscribe(call: call, eventSink: self.eventSink)
+        break
     default:
       result(FlutterMethodNotImplemented)
     }

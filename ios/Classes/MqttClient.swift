@@ -24,7 +24,12 @@ class MqttClient {
     private var isReconnect: Bool = false
     // 是否是主动断开连接
     private var isInitiativeDisconnect: Bool = false
+    // mqtt 连接数据
     private var connectData: [String: Any?] = [:]
+    // 取消订阅并且重连数据
+    private var unSubscribeByReSubscribe: [[String: Any]] = []
+    
+    
     /**
       连接mqtt服务
      */
@@ -118,7 +123,6 @@ class MqttClient {
         for topic in topics! {
             mqttClient?.unsubscribe(topic)
         }
-  
     }
     
     /**
@@ -143,6 +147,7 @@ class MqttClient {
             mqttClient!.keepAlive = connectData["keepAlive"] as! UInt16
             mqttClient!.autoReconnect = connectData["autoReconnect"] as! Bool == true
             mqttClient!.delegate = self
+            mqttClient!.cleanSession = false
             let isConnect =  mqttClient!.connect()
             print(isConnect)
             return
@@ -206,6 +211,30 @@ class MqttClient {
             return CocoaMQTTQoS.qos2
         default:
             return CocoaMQTTQoS.FAILURE
+        }
+    }
+    /**
+     取消订阅并重连
+     */
+    func unSubscribeByReSubscribe(call: FlutterMethodCall, eventSink: FlutterEventSink?) {
+        if (self.eventSink == nil) {
+            self.eventSink = eventSink
+        }
+        if (self.mqttClient == nil) {
+            self.createResult(type: "publish", isSuccess: false, message: "mqtt未初始化", data: "")
+            return
+        }
+        
+        let args = call.arguments as!  [String: Any]
+        let topics =  args["topics"] as? [[String: Any]]
+        if (topics == nil) {
+            return
+        }
+        self.unSubscribeByReSubscribe = topics!
+        for i in 0..<topics!.count {
+            let data = topics![i] as [String: Any]
+            let topic = data["topic"] as! String
+            self.mqttClient?.unsubscribe(topic)
         }
     }
     
@@ -283,6 +312,17 @@ extension MqttClient: CocoaMQTT5Delegate {
             for i in  0..<topics.count {
                 self.createResult(type: "unSubscribe", isSuccess: true, message: "", data: topics[i])
             }
+            if (!self.unSubscribeByReSubscribe.isEmpty) {
+                for i in 0..<self.unSubscribeByReSubscribe.count {
+                    let data = self.unSubscribeByReSubscribe[i]
+                    let topic = data["topic"] as! String
+                    let qos = data["qos"] as! Int
+                    self.mqttClient?.subscribe(topic, qos: self.intToCocoaMQTTQoS(qos:qos))
+                }
+                
+                self.unSubscribeByReSubscribe = []
+            }
+            
         }
     }
     func mqtt5UrlSession(_ mqtt: CocoaMQTT5, didReceiveTrust trust: SecTrust, didReceiveChallenge challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
