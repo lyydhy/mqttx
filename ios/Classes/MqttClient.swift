@@ -28,6 +28,8 @@ class MqttClient {
     private var connectData: [String: Any?] = [:]
     // 取消订阅并且重连数据
     private var unSubscribeByReSubscribe: [[String: Any]] = []
+    // 是否是第一次连接
+    private var isFirstConnect: Bool = true
     
     
     /**
@@ -40,6 +42,7 @@ class MqttClient {
         if (mqttClient != nil) {
             return;
         }
+        self.isFirstConnect = true
         let args = call.arguments as!  [String: Any]
         let server =  args["server"] as? String
         let port = args["port"] as? UInt16
@@ -251,7 +254,10 @@ class MqttClient {
 extension MqttClient: CocoaMQTT5Delegate {
     func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
         if (ack == CocoaMQTTCONNACKReasonCode.success) {
-            
+            if (!self.isFirstConnect) {
+                self.isFirstConnect = false
+                self.isReconnect = true
+            }
             self.createResult(type: self.isReconnect ? "reconnect" : "connect", isSuccess: true, message: nil, data: nil)
         } else {
             self.createResult(type: self.isReconnect ? "reconnect" : "connect", isSuccess: false, message: self.isReconnect ? "重连失败" : "连接失败", data: nil)
