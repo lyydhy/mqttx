@@ -131,10 +131,12 @@ class MqttClient {
         let args = call.arguments as!  [String: Any]
         let clientId = args["clientId"] as? String
         if (clientId != nil && self.connectState == CocoaMQTTConnState.disconnected) {
+            self.mqttClient?.disconnect()
+            self.mqttClient = nil
             self.isReconnect = true
             // 当重新传递clientId的时候 断开之前的重新初始化连接
             self.connectState = CocoaMQTTConnState.disconnected
-            self.mqttClient = nil
+   
             connectData["clientId"] = clientId;
             
             mqttClient = CocoaMQTT5(clientID: clientId!, host: connectData["server"] as! String, port: connectData["port"] as! UInt16)

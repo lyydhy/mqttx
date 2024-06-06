@@ -90,7 +90,7 @@ class MqttClient {
         options.keepAliveInterval = keepAlive!!
         options.connectionTimeout = connectionTimeout!!
         options.isAutomaticReconnect = autoReconnect == true
-        options.isCleanSession = true
+//        options.isCleanSession = true
 
         try {
             mqttClient!!.setCallback(object : MqttCallbackExtended {
@@ -321,6 +321,7 @@ class MqttClient {
             try {
                 val clientId: String? = call.argument("clientId")
                 if (clientId != null) {
+                    mqttClient!!.disconnect()
                     mqttClient = null
                     this.isReconnect = true
                     _connect(eventSink)
