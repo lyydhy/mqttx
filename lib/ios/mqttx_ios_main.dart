@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:mqtt5_client/mqtt5_client.dart';
-import 'package:mqtt5_client/mqtt5_server_client.dart';
 import 'package:mqttx/ios/MqttxPlatformByIos.dart';
 import '../mqttx_config.dart';
 import '../mqttx_interface.dart' hide MqttQos;
 
 class MqttxIosMain implements MqttxInterface {
   static const EventChannel _eventChannel = EventChannel('mqttx/ios/event');
-  late MqttServerClient _mqttServerClient;
   late MqttxConfig _config;
+
+  // 所有已经订阅的主题
+  List<SubscribeParam> _subscribedTopics = [];
 
   // 接收来自原生代码的异步事件
   static Stream<dynamic> get receiveBroadcastStream =>
@@ -48,10 +49,10 @@ class MqttxIosMain implements MqttxInterface {
             if (_config.onReconnected != null) {
               _config.onReconnected!();
             }
-            // if (_subscribedTopics.isNotEmpty) {
-            //   // 重新订阅
-            //   MqttxPlatformByIos.instance.subscribe(_subscribedTopics);
-            // }
+            if (_subscribedTopics.isNotEmpty) {
+              // 重新订阅
+              MqttxPlatformByIos.instance.subscribe(_subscribedTopics);
+            }
           }
           break;
       }
@@ -88,12 +89,19 @@ class MqttxIosMain implements MqttxInterface {
 
   @override
   Future<void> subscribe(List<SubscribeParam> subscribeParams) async {
+    subscribeParams.forEach((element) {
+      if (_subscribedTopics
+          .indexWhere((element1) => element.topic == element1.topic) ==
+          -1) {
+        _subscribedTopics.add(element);
+      }
+    });
     MqttxPlatformByIos.instance.subscribe(subscribeParams);
   }
 
   @override
   Future<void> unSubscribe(List<String> topics) async {
-    // _subscribedTopics.removeWhere((element) => topics.contains(element.topic));
+    _subscribedTopics.removeWhere((element) => topics.contains(element.topic));
     MqttxPlatformByIos.instance.unSubscribe(topics);
     return;
   }
