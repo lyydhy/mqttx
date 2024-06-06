@@ -43,12 +43,17 @@ class MqttxAndroidMain implements MqttxInterface {
           if (_config.onDisconnected != null) {
             _config.onDisconnected!();
           }
+
         case 'reconnect':
           if (code == 'success') {
             if (_config.onReconnected != null) {
               _config.onReconnected!();
             }
             if (_subscribedTopics.isNotEmpty) {
+              // _subscribedTopics.map((e) => {
+              // MqttxPlatformByAndroid.instance.unSubscribe(topic: e.topic);
+              // });
+
               // 重新订阅
               MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
             }
@@ -100,6 +105,7 @@ class MqttxAndroidMain implements MqttxInterface {
         _subscribedTopics.add(element);
       }
     });
+
     MqttxPlatformByAndroid.instance.subscribe(subscribeParams);
   }
 
