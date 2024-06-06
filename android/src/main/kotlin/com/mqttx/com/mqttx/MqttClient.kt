@@ -98,6 +98,7 @@ class MqttClient {
             mqttClient!!.setCallback(object : MqttCallbackExtended {
 
                 override fun connectionLost(cause: Throwable?) {
+                    isConnect = false
                     val result = mapOf<String, Any?>(
                         "type" to "disconnect",
                         "code" to "success",
@@ -150,9 +151,12 @@ class MqttClient {
                         }
 
                     } else if (reconnect) {
+                        isReconnect = false
                         println("重连失败")
+                    } else {
+                        isReconnect = false
                     }
-                    isReconnect = false
+
                 }
 
             })
