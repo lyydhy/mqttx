@@ -33,10 +33,9 @@ class MqttClient {
     // 当前 Activity
     private var _activity: Activity? = null
 
-    private var server: String? = null
-    private var port: Int? = null
-    private var clientId: String? = null
-    private val connectData: Map<String, Any?> = mapOf()
+    private var connectData: Map<String, Any?> = mapOf()
+
+    private var isReconnect: Boolean = false
 
     companion object {
         val instance: MqttClient by lazy { MqttClient() }
@@ -53,12 +52,33 @@ class MqttClient {
         if (mqttClient != null && mqttClient!!.isConnected) {
             return
         }
-        server = call.argument("server")
-        port = call.argument("port")
-        clientId = call.argument("clientId")
+        val server: String? = call.argument("server")
+        val port: Int? = call.argument("port")
+        val clientId: String? = call.argument("clientId")
         val keepAlive: Int? = call.argument("keepAlive")
         val connectionTimeout: Int? = call.argument("connectionTimeout")
         val autoReconnect: Boolean? = call.argument("autoReconnect")
+        connectData = mapOf(
+            "server" to server,
+            "port" to port,
+            "clientId" to clientId,
+            "keepAlive" to keepAlive,
+            "connectionTimeout" to connectionTimeout,
+            "autoReconnect" to autoReconnect
+        )
+        _connect(eventSink)
+    }
+
+    /**
+     * 处理连接mqtt
+     */
+    private fun _connect(eventSink: EventSink?) {
+        val server = connectData["server"] as String?
+        val port = connectData["port"] as Int?
+        val clientId = connectData["clientId"] as String?
+        val keepAlive = connectData["keepAlive"] as Int?
+        val connectionTimeout = connectData["connectionTimeout"] as Int?
+        val autoReconnect = connectData["autoReconnect"] as Boolean?
 
         mqttClient = MqttAndroidClient(
             _activity?.applicationContext!!,
@@ -66,14 +86,6 @@ class MqttClient {
             clientId!!,
             Ack.AUTO_ACK
         )
-//            .apply {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//                setForegroundService(buildNotification(_activity!!.applicationContext))
-//            }
-//
-//        }
-
-
         val options = MqttConnectOptions()
         options.keepAliveInterval = keepAlive!!
         options.connectionTimeout = connectionTimeout!!
@@ -120,7 +132,7 @@ class MqttClient {
 
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                     if (mqttClient?.isConnected == true) {
-                        if (reconnect) {
+                        if (reconnect || isReconnect) {
                             _activity!!.runOnUiThread {
                                 eventSink?.success(
                                     mapOf<String, Any?>(
@@ -138,6 +150,7 @@ class MqttClient {
                     } else if (reconnect) {
                         println("重连失败")
                     }
+                    isReconnect = false
                 }
 
             })
@@ -167,6 +180,7 @@ class MqttClient {
             e.printStackTrace()
         }
     }
+
 
     /**
      * 获取当前连接状态
@@ -300,9 +314,18 @@ class MqttClient {
     /**
      * 重连
      */
-    fun reconnect(result: MethodChannel.Result) {
-        if (mqttClient != null) {
+    fun reconnect(call: MethodCall, eventSink: EventSink?) {
+
+
+        if (mqttClient != null && !mqttClient!!.isConnected) {
             try {
+                val clientId: String? = call.argument("clientId")
+                if (clientId != null) {
+                    mqttClient = null
+                    this.isReconnect = true
+                    _connect(eventSink)
+                    return;
+                }
 
                 mqttClient!!.reconnect()
 //                result.success(true)

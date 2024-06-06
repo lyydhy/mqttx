@@ -53,7 +53,7 @@ class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBindin
             }
 
             "reconnect" -> {
-                MqttClient.instance.reconnect(result)
+                MqttClient.instance.reconnect(call,eventSink!!)
             }
 
             "disconnect" -> {

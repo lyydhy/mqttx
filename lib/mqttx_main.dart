@@ -41,8 +41,8 @@ class Mqttx {
     }
   }
 
-  Future<void> reconnect() async {
-    client?.reconnect();
+  Future<void> reconnect({String? clientId}) async {
+    client?.reconnect(clientId: clientId);
   }
 
   Future<void> disconnect() async {
