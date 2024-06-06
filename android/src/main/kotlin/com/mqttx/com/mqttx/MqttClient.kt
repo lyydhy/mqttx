@@ -321,7 +321,7 @@ class MqttClient {
             try {
                 val clientId: String? = call.argument("clientId")
                 if (clientId != null) {
-                    mqttClient!!.disconnect()
+                    mqttClient?.disconnect()
                     mqttClient = null
                     this.isReconnect = true
                     _connect(eventSink)
