@@ -62,6 +62,9 @@ class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBindin
             "publish" -> {
                 MqttClient.instance.publish(call, eventSink!!)
             }
+            "unSubscribeByReSubscribe" -> {
+                MqttClient.instance.unSubscribeByReSubscribe(call, eventSink!!)
+            }
         }
     }
 

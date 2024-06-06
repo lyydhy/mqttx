@@ -50,13 +50,13 @@ class MqttxAndroidMain implements MqttxInterface {
               _config.onReconnected!();
             }
             if (_subscribedTopics.isNotEmpty) {
-              var topics = _subscribedTopics.map((e) {
-                return e.topic;
-              }).toList();
-              MqttxPlatformByAndroid.instance.unSubscribe(topics);
+              // var topics = _subscribedTopics.map((e) {
+              //   return e.topic;
+              // }).toList();
+              MqttxPlatformByAndroid.instance.unSubscribeByReSubscribe(_subscribedTopics);
 
-              // 重新订阅
-              MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
+              // // 重新订阅
+              // MqttxPlatformByAndroid.instance.subscribe(_subscribedTopics);
             }
           }
           break;

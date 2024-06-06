@@ -33,6 +33,10 @@ abstract class MqttxPlatformByAndroid extends PlatformInterface {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 
+  Future<void> unSubscribeByReSubscribe(List<SubscribeParam> subscribeParams) {
+    throw UnimplementedError('platformVersion() has not been implemented.');
+  }
+
   Future<void> reconnect({String? clientId}) {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }

@@ -33,9 +33,11 @@ class MqttClient {
     // 当前 Activity
     private var _activity: Activity? = null
 
-    private var connectData: Map<String, Any?> = mapOf()
+    private var connectData = mutableMapOf<String, Any?>()
 
     private var isReconnect: Boolean = false
+
+    private var isConnect: Boolean = false
 
     companion object {
         val instance: MqttClient by lazy { MqttClient() }
@@ -58,7 +60,7 @@ class MqttClient {
         val keepAlive: Int? = call.argument("keepAlive")
         val connectionTimeout: Int? = call.argument("connectionTimeout")
         val autoReconnect: Boolean? = call.argument("autoReconnect")
-        connectData = mapOf(
+        connectData = mutableMapOf(
             "server" to server,
             "port" to port,
             "clientId" to clientId,
@@ -96,7 +98,6 @@ class MqttClient {
             mqttClient!!.setCallback(object : MqttCallbackExtended {
 
                 override fun connectionLost(cause: Throwable?) {
-                    println("断开异");
                     val result = mapOf<String, Any?>(
                         "type" to "disconnect",
                         "code" to "success",
@@ -132,6 +133,7 @@ class MqttClient {
 
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                     if (mqttClient?.isConnected == true) {
+                        isConnect = true;
                         if (reconnect || isReconnect) {
                             _activity!!.runOnUiThread {
                                 eventSink?.success(
@@ -156,6 +158,7 @@ class MqttClient {
             })
             mqttClient!!.connect(options, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    isConnect = true;
                     val result: Map<String, Any> = mapOf("type" to "connect", "code" to "success");
                     _activity!!.runOnUiThread {
                         eventSink?.success(result);
@@ -164,7 +167,7 @@ class MqttClient {
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-
+                    isConnect = false;
                     val errMessage: String = exception?.message ?: "connect fail"
                     val result: Map<String, Any> =
                         mapOf("type" to "connect", "code" to "fail", "message" to errMessage)
@@ -187,7 +190,7 @@ class MqttClient {
      */
     fun getStatus(result: MethodChannel.Result) {
         if (mqttClient != null) {
-            result.success(mqttClient!!.isConnected)
+            result.success(isConnect)
         } else {
             result.success(false)
         }
@@ -203,47 +206,8 @@ class MqttClient {
 
             try {
                 topic!!.forEachIndexed { index, t: String ->
-                    mqttClient!!.subscribe(
-                        t,
-                        qos?.get(index)!!,
-                        null,
-                        object : IMqttActionListener {
-                            override fun onSuccess(asyncActionToken: IMqttToken?) {
-                                val result: Map<String, Any?> =
-                                    mapOf(
-                                        "type" to "subscribe",
-                                        "code" to "success",
-                                        "data" to mapOf<String, Any?>(
-                                            "topic" to t,
-                                            "qos" to qos[index]
-                                        )
-                                    )
-
-                                _activity!!.runOnUiThread {
-                                    eventSink!!.success(result)
-                                }
-                            }
-
-                            override fun onFailure(
-                                asyncActionToken: IMqttToken?,
-                                exception: Throwable?
-                            ) {
-                                val result: Map<String, Any?> =
-                                    mapOf(
-                                        "type" to "subscribe",
-                                        "code" to "fail",
-                                        "data" to mapOf<String, Any?>(
-                                            "topic" to t,
-                                            "qos" to qos[index]
-                                        )
-                                    );
-                                _activity!!.runOnUiThread {
-                                    eventSink!!.success(result)
-                                }
-                            }
-
-                        })
-
+                    val q: Int = qos?.get(index) ?: 1
+                    _subscribe(t, q, eventSink)
                 }
             } catch (e: MqttException) {
                 e.printStackTrace()
@@ -311,13 +275,94 @@ class MqttClient {
         }
     }
 
+
+    fun _subscribe(topic: String, qos: Int, eventSink: EventSink?) {
+        mqttClient!!.subscribe(
+            topic,
+            qos,
+            null,
+            object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    val result: Map<String, Any?> =
+                        mapOf(
+                            "type" to "subscribe",
+                            "code" to "success",
+                            "data" to mapOf<String, Any?>(
+                                "topic" to topic,
+                                "qos" to qos
+                            )
+                        )
+
+                    _activity!!.runOnUiThread {
+                        eventSink!!.success(result)
+                    }
+                }
+
+                override fun onFailure(
+                    asyncActionToken: IMqttToken?,
+                    exception: Throwable?
+                ) {
+                    val result: Map<String, Any?> =
+                        mapOf(
+                            "type" to "subscribe",
+                            "code" to "fail",
+                            "data" to mapOf<String, Any?>(
+                                "topic" to topic,
+                                "qos" to qos
+                            )
+                        );
+                    _activity!!.runOnUiThread {
+                        eventSink!!.success(result)
+                    }
+                }
+
+            })
+    }
+
+    /**
+     * 取消并订阅
+     */
+    fun unSubscribeByReSubscribe(call: MethodCall, eventSink: EventSink?) {
+        val topics = call.argument<List<Map<String, Any>>>("topics")
+        if (topics != null && mqttClient != null) {
+            topics.forEachIndexed { index, s ->
+                val topic = s["topic"] as String
+                mqttClient!!.unsubscribe(topic, null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        val result: Map<String, Any?> =
+                            mapOf(
+                                "type" to "unSubscribe",
+                                "code" to "success",
+                                "data" to topic
+                            )
+                        _subscribe(topic, s["qos"] as Int, eventSink)
+                        _activity!!.runOnUiThread {
+                            eventSink!!.success(result)
+                        }
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        val result: Map<String, Any?> =
+                            mapOf(
+                                "type" to "unSubscribe",
+                                "code" to "fail",
+                                "data" to topic
+                            );
+                        _activity!!.runOnUiThread {
+                            eventSink!!.success(result)
+                        }
+                    }
+
+                })
+            }
+        }
+    }
+
     /**
      * 重连
      */
     fun reconnect(call: MethodCall, eventSink: EventSink?) {
-
-
-        if (mqttClient != null && !mqttClient!!.isConnected) {
+        if (mqttClient != null && !isConnect) {
             try {
                 val clientId: String? = call.argument("clientId")
                 if (clientId != null) {
@@ -326,6 +371,7 @@ class MqttClient {
                     }
                     mqttClient = null
                     this.isReconnect = true
+                    connectData["clientId"] = clientId
                     _connect(eventSink)
                     return;
                 }
@@ -346,35 +392,39 @@ class MqttClient {
      * 断开连接
      */
     fun disconnect(eventSink: EventSink?) {
-        if (mqttClient != null && mqttClient?.isConnected == true) {
+        if (mqttClient != null) {
             try {
-                mqttClient!!.disconnect(null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        mqttClient = null
-                        _activity!!.runOnUiThread {
-                            eventSink!!.success(
-                                mapOf<String, Any?>(
-                                    "type" to "disconnect",
-                                    "code" to "success",
-                                    "message" to "mqtt disconnected"
-                                )
-                            )
-                        }
-                    }
+                isConnect = false
+                mqttClient!!.close()
+                mqttClient = null
 
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        _activity!!.runOnUiThread {
-                            eventSink!!.success(
-                                mapOf<String, Any?>(
-                                    "type" to "disconnect",
-                                    "code" to "fail",
-                                    "message" to exception?.message
-                                )
-                            )
-                        }
-                    }
-
-                })
+                _activity!!.runOnUiThread {
+                    eventSink!!.success(
+                        mapOf<String, Any?>(
+                            "type" to "disconnect",
+                            "code" to "success",
+                            "message" to "mqtt disconnected"
+                        )
+                    )
+                }
+//                mqttClient!!.disconnect(null, object : IMqttActionListener {
+//                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+//
+//                    }
+//
+//                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+//                        _activity!!.runOnUiThread {
+//                            eventSink!!.success(
+//                                mapOf<String, Any?>(
+//                                    "type" to "disconnect",
+//                                    "code" to "fail",
+//                                    "message" to exception?.message
+//                                )
+//                            )
+//                        }
+//                    }
+//
+//                })
 //                mqttClient!!.close()
             } catch (e: MqttException) {
                 e.printStackTrace()
