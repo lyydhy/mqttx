@@ -9,6 +9,16 @@ import 'mqttx_interface.dart';
 class Mqttx {
   late MqttxConfig _clientConfig;
   late MqttxInterface? client = null;
+  static final Mqttx _instance = Mqttx._internal();
+
+  factory Mqttx() => _instance;
+
+  static Mqttx get instance => _instance;
+
+  Mqttx._internal() {
+    // 这里可以初始化_client等资源
+    // _client = /* 初始化_client的逻辑 */;
+  }
 
   Mqttx createClient(MqttxConfig config) {
     _clientConfig = config;
