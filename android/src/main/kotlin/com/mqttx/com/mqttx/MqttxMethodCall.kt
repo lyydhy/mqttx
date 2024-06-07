@@ -75,6 +75,8 @@ class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBindin
     }
 
     override fun onCancel(arguments: Any?) {
+        print("释放资源")
+        CustomMqttClient.instance.destroy()
         eventSink = null;
     }
 

@@ -9,6 +9,7 @@ import android.app.PendingIntent
 
 import android.content.Context
 import android.content.Intent
+import android.os.Looper
 import info.mqtt.android.service.Ack
 import info.mqtt.android.service.MqttAndroidClient
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -21,6 +22,7 @@ import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import java.util.logging.Handler
 
 class CustomMqttClient {
 
@@ -35,6 +37,9 @@ class CustomMqttClient {
     private var isReconnect: Boolean = false
 
     private var isConnect: Boolean = false
+
+    // 当前是否在重连进行中
+    private var isReconnecting: Boolean = false
 
     companion object {
         val instance: CustomMqttClient by lazy { CustomMqttClient() }
@@ -88,13 +93,14 @@ class CustomMqttClient {
         val options = MqttConnectOptions()
         options.keepAliveInterval = keepAlive!!
         options.connectionTimeout = connectionTimeout!!
-        options.isAutomaticReconnect = autoReconnect == true
+        options.isAutomaticReconnect = false
 //        options.isCleanSession = true
 
         try {
             instance._mqttAndroidClient!!.setCallback(object : MqttCallbackExtended {
 
                 override fun connectionLost(cause: Throwable?) {
+                    instance._reconnect(eventSink)
                     isConnect = false
                     val result = mapOf<String, Any?>(
                         "type" to "disconnect",
@@ -144,7 +150,6 @@ class CustomMqttClient {
                                 )
 
                             }
-                            println("重连成功")
                         }
 
                     } else if (reconnect) {
@@ -185,6 +190,48 @@ class CustomMqttClient {
         }
     }
 
+    /**
+     * 手动实现重连
+     */
+    fun _reconnect(eventSink: EventSink?) {
+        val reconnectTask = object : Runnable {
+            override fun run() {
+                try {
+                    val that = this
+                    val options = MqttConnectOptions().apply {
+                        isAutomaticReconnect = false // 关闭自动重连，因为我们手动处理
+                    }
+                    instance.isReconnecting = true
+                    instance._mqttAndroidClient!!.connect(options, object : IMqttActionListener {
+                        override fun onSuccess(asyncActionToken: IMqttToken) {
+                            instance.isReconnecting = false
+                            isReconnect = true
+
+                        }
+
+                        override fun onFailure(
+                            asyncActionToken: IMqttToken?,
+                            exception: Throwable?
+                        ) {
+                            instance.isReconnecting = false
+//                            Log.e("MqttService", "Failed to reconnect, retrying in 5 seconds", exception)
+                            // 重试间隔，这里使用5秒
+                            println("间隔两秒 再次重连")
+                            _activity!!.runOnUiThread {
+                                val handler = android.os.Handler(Looper.getMainLooper())
+                                handler.postDelayed(that, 2 * 1000)
+                            }
+                        }
+                    })
+                } catch (e: MqttException) {
+                    println("重连失败")
+                }
+            }
+
+        }
+        _activity!!.runOnUiThread(reconnectTask)
+
+    }
 
     /**
      * 获取当前连接状态
@@ -328,33 +375,39 @@ class CustomMqttClient {
         if (topics != null && instance._mqttAndroidClient != null) {
             topics.forEachIndexed { index, s ->
                 val topic = s["topic"] as String
-                instance._mqttAndroidClient!!.unsubscribe(topic, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        val result: Map<String, Any?> =
-                            mapOf(
-                                "type" to "unSubscribe",
-                                "code" to "success",
-                                "data" to topic
-                            )
-                        _subscribe(topic, s["qos"] as Int, eventSink)
-                        _activity!!.runOnUiThread {
-                            eventSink!!.success(result)
+                instance._mqttAndroidClient!!.unsubscribe(
+                    topic,
+                    null,
+                    object : IMqttActionListener {
+                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                            val result: Map<String, Any?> =
+                                mapOf(
+                                    "type" to "unSubscribe",
+                                    "code" to "success",
+                                    "data" to topic
+                                )
+                            _subscribe(topic, s["qos"] as Int, eventSink)
+                            _activity!!.runOnUiThread {
+                                eventSink!!.success(result)
+                            }
                         }
-                    }
 
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val result: Map<String, Any?> =
-                            mapOf(
-                                "type" to "unSubscribe",
-                                "code" to "fail",
-                                "data" to topic
-                            );
-                        _activity!!.runOnUiThread {
-                            eventSink!!.success(result)
+                        override fun onFailure(
+                            asyncActionToken: IMqttToken?,
+                            exception: Throwable?
+                        ) {
+                            val result: Map<String, Any?> =
+                                mapOf(
+                                    "type" to "unSubscribe",
+                                    "code" to "fail",
+                                    "data" to topic
+                                );
+                            _activity!!.runOnUiThread {
+                                eventSink!!.success(result)
+                            }
                         }
-                    }
 
-                })
+                    })
             }
         }
     }
@@ -363,7 +416,7 @@ class CustomMqttClient {
      * 重连
      */
     fun reconnect(call: MethodCall, eventSink: EventSink?) {
-        if (instance._mqttAndroidClient != null && !isConnect) {
+        if (instance._mqttAndroidClient != null && !isConnect && !isReconnecting) {
             try {
                 val clientId: String? = call.argument("clientId")
                 if (clientId != null) {
@@ -471,6 +524,7 @@ class CustomMqttClient {
         isReconnect = false
         if (instance._mqttAndroidClient != null) {
             try {
+                instance._mqttAndroidClient!!.unregisterResources()
                 instance._mqttAndroidClient!!.close()
                 instance._mqttAndroidClient = null
             } catch (e: MqttException) {

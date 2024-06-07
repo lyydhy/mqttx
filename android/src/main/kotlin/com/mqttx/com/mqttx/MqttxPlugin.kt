@@ -52,7 +52,6 @@ class MqttxPlugin : FlutterPlugin, ActivityAware {
     }
 
     override fun onDetachedFromActivity() {
-        CustomMqttClient.instance.destroy()
         this.mqttxPluginDelegate = null;
     }
 }
