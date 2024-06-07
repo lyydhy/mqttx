@@ -22,7 +22,6 @@ import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
-import java.util.logging.Handler
 
 class CustomMqttClient {
 
@@ -449,7 +448,7 @@ class CustomMqttClient {
         if (instance._mqttAndroidClient != null) {
             try {
                 isConnect = false
-                instance._mqttAndroidClient!!.close()
+                instance._mqttAndroidClient!!.disconnect()
                 instance._mqttAndroidClient = null
 
                 _activity!!.runOnUiThread {
@@ -524,8 +523,10 @@ class CustomMqttClient {
         isReconnect = false
         if (instance._mqttAndroidClient != null) {
             try {
-                instance._mqttAndroidClient!!.unregisterResources()
-                instance._mqttAndroidClient!!.close()
+                println("销毁实例")
+                instance._mqttAndroidClient!!.disconnect()
+//                instance._mqttAndroidClient!!.unregisterResources()
+//                instance._mqttAndroidClient!!.close()
                 instance._mqttAndroidClient = null
             } catch (e: MqttException) {
                 e.printStackTrace()
