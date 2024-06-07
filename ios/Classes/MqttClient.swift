@@ -28,7 +28,8 @@ class MqttClient {
     private var connectData: [String: Any?] = [:]
     // 取消订阅并且重连数据
     private var unSubscribeByReSubscribe: [[String: Any]] = []
-
+// 重连中
+    private var isReconnectIng: Bool = false
     
     /**
       连接mqtt服务
@@ -62,14 +63,15 @@ class MqttClient {
         ]
         mqttClient = CocoaMQTT5(clientID: clientId!, host: server!, port: port!)
         mqttClient!.keepAlive = keepAlive!
-        mqttClient!.autoReconnect = autoReconnect == true
+        mqttClient!.autoReconnect = false
+        mqttClient!.autoReconnectTimeInterval = 2
         mqttClient!.delegate = MqttClient.instance
 //        mqttClient!.didReceiveMessage = {mqtt : Mq, message: CocoaMQTT5Message, id in
 //
 //        }
-        let isConnect =  mqttClient!.connect()
-        print(isConnect)
+        _ =  mqttClient!.connect()
     }
+    
     
     /**
       获取当前连接状态
@@ -136,6 +138,9 @@ class MqttClient {
         if (self.eventSink == nil) {
             self.eventSink = eventSink
         }
+        if (isReconnectIng) {
+            return
+        }
         let args = call.arguments as!  [String: Any]
         let clientId = args["clientId"] as? String
         if (clientId != nil && self.connectState == CocoaMQTTConnState.disconnected) {
@@ -151,7 +156,8 @@ class MqttClient {
             mqttClient!.keepAlive = connectData["keepAlive"] as! UInt16
             mqttClient!.autoReconnect = connectData["autoReconnect"] as! Bool == true
             mqttClient!.delegate = self
-            mqttClient!.cleanSession = false
+            mqttClient!.cleanSession = true
+            mqttClient!.autoReconnectTimeInterval = 2
             let isConnect =  mqttClient!.connect()
             print(isConnect)
             return
@@ -180,7 +186,17 @@ class MqttClient {
         }
         mqttClient?.disconnect()
         self.isInitiativeDisconnect = true
-//        mqttClient = nil
+        mqttClient = nil
+    }
+    /**
+     销毁
+     */
+    func destory() {
+        if (self.mqttClient != nil) {
+            self.mqttClient?.disconnect()
+            self.isInitiativeDisconnect = true
+            mqttClient = nil
+        }
     }
     
     /**
@@ -254,14 +270,16 @@ class MqttClient {
 
 extension MqttClient: CocoaMQTT5Delegate {
     func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
+        self.isReconnectIng = false
         if (ack == CocoaMQTTCONNACKReasonCode.success) {
-            print("连接成功", isFirstConnect, MqttClient.instance.isReconnect)
+//            print("连接成功", isFirstConnect, MqttClient.instance.isReconnect)
             if (!isFirstConnect) {
                 isFirstConnect = false
                 MqttClient.instance.isReconnect = true
             }
             self.createResult(type: MqttClient.instance.isReconnect ? "reconnect" : "connect", isSuccess: true, message: nil, data: nil)
         } else {
+     
             self.createResult(type: MqttClient.instance.isReconnect ? "reconnect" : "connect", isSuccess: false, message: MqttClient.instance.isReconnect ? "重连失败" : "连接失败", data: nil)
         }
         isFirstConnect = false
@@ -290,6 +308,7 @@ extension MqttClient: CocoaMQTT5Delegate {
         }
     }
     func mqtt5(_ mqtt5: CocoaMQTT5, didStateChangeTo state: CocoaMQTTConnState) {
+        self.isReconnectIng = false
         if (state == CocoaMQTTConnState.connected) {
             self.connectState = CocoaMQTTConnState.connected
         }
@@ -344,11 +363,22 @@ extension MqttClient: CocoaMQTT5Delegate {
         print("")
     }
     func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
+        self.isReconnectIng = false
         self.connectState = CocoaMQTTConnState.disconnected
         self.isReconnect = false
         self.createResult(type: "disconnect", isSuccess: true, message: "连接断开", data: nil)
         if (self.isInitiativeDisconnect) {
             self.mqttClient = nil
+        } else {
+            let timeNow = DispatchTime.now()
+            let delayInMilliseconds: Int = Int(mqtt5.autoReconnectTimeInterval)   // 假设的延迟时间，以毫秒为单位
+            let delayInterval = DispatchTimeInterval.milliseconds(delayInMilliseconds * 1000)
+            let timeAfterDelay = timeNow + delayInterval
+            self.isReconnectIng = true
+            self.isReconnect = true
+             DispatchQueue.main.asyncAfter(deadline: timeAfterDelay, execute: {
+                _ = mqtt5.connect()
+            })
         }
         self.isInitiativeDisconnect = false
     }

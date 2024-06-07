@@ -4,16 +4,16 @@ import UIKit
 public class MqttxPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     var eventSink:FlutterEventSink?
     
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         print("eventSink")
         self.eventSink = events
         return nil
     }
     
     public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        MqttClient.instance.destory()
         return nil
     }
-    
     
     
   public static func register(with registrar: FlutterPluginRegistrar) {
