@@ -40,6 +40,9 @@ class MqttxAndroidMain implements MqttxInterface {
             _config.onMessage!(data['topic'], data['message']);
           }
         case 'disconnect':
+          if (code == 'fail') {
+            print("断开连接失败  ${message}");
+          }
           if (_config.onDisconnected != null) {
             _config.onDisconnected!();
           }
