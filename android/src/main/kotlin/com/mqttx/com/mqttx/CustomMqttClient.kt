@@ -9,8 +9,6 @@ import android.app.PendingIntent
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import androidx.core.content.ContextCompat.startForegroundService
 import info.mqtt.android.service.Ack
 import info.mqtt.android.service.MqttAndroidClient
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -19,16 +17,15 @@ import io.flutter.plugin.common.MethodChannel
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 
-class MqttClient {
+class CustomMqttClient {
 
     // mqtt实利
-    private var mqttClient: MqttAndroidClient? = null
+    private var _mqttAndroidClient: MqttAndroidClient? = null
 
     // 当前 Activity
     private var _activity: Activity? = null
@@ -40,7 +37,7 @@ class MqttClient {
     private var isConnect: Boolean = false
 
     companion object {
-        val instance: MqttClient by lazy { MqttClient() }
+        val instance: CustomMqttClient by lazy { CustomMqttClient() }
     }
 
     fun init(activity: Activity) {
@@ -51,7 +48,7 @@ class MqttClient {
      * 连接mqtt 服务
      */
     fun connect(call: MethodCall, eventSink: EventSink?) {
-        if (mqttClient != null && mqttClient!!.isConnected) {
+        if (instance._mqttAndroidClient != null && instance._mqttAndroidClient?.isConnected == true) {
             return
         }
         val server: String? = call.argument("server")
@@ -82,7 +79,7 @@ class MqttClient {
         val connectionTimeout = connectData["connectionTimeout"] as Int?
         val autoReconnect = connectData["autoReconnect"] as Boolean?
 
-        mqttClient = MqttAndroidClient(
+        instance._mqttAndroidClient = MqttAndroidClient(
             _activity?.applicationContext!!,
             "$server:$port",
             clientId!!,
@@ -95,7 +92,7 @@ class MqttClient {
 //        options.isCleanSession = true
 
         try {
-            mqttClient!!.setCallback(object : MqttCallbackExtended {
+            instance._mqttAndroidClient!!.setCallback(object : MqttCallbackExtended {
 
                 override fun connectionLost(cause: Throwable?) {
                     isConnect = false
@@ -133,7 +130,7 @@ class MqttClient {
                 }
 
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                    if (mqttClient?.isConnected == true) {
+                    if (instance._mqttAndroidClient?.isConnected == true) {
                         isConnect = true;
                         if (reconnect || isReconnect) {
                             _activity!!.runOnUiThread {
@@ -160,7 +157,7 @@ class MqttClient {
                 }
 
             })
-            mqttClient!!.connect(options, null, object : IMqttActionListener {
+            instance._mqttAndroidClient!!.connect(options, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     isConnect = true;
                     val result: Map<String, Any> = mapOf("type" to "connect", "code" to "success");
@@ -193,7 +190,7 @@ class MqttClient {
      * 获取当前连接状态
      */
     fun getStatus(result: MethodChannel.Result) {
-        if (mqttClient != null) {
+        if (instance._mqttAndroidClient != null) {
             result.success(isConnect)
         } else {
             result.success(false)
@@ -206,7 +203,7 @@ class MqttClient {
     fun subscribe(call: MethodCall, eventSink: EventSink?) {
         val topic = call.argument<List<String>>("topic")
         val qos = call.argument<List<Int>>("qos")
-        if (mqttClient != null) {
+        if (instance._mqttAndroidClient != null) {
 
             try {
                 topic!!.forEachIndexed { index, t: String ->
@@ -236,10 +233,10 @@ class MqttClient {
      */
     fun unSubscribe(call: MethodCall, eventSink: EventSink?) {
         val topics = call.argument<List<String>>("topic") ?: emptyList()
-        if (mqttClient != null) {
+        if (instance._mqttAndroidClient != null) {
 
             topics.forEachIndexed { index, s ->
-                mqttClient!!.unsubscribe(s, null, object : IMqttActionListener {
+                instance._mqttAndroidClient!!.unsubscribe(s, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         val result: Map<String, Any?> =
                             mapOf(
@@ -281,7 +278,7 @@ class MqttClient {
 
 
     fun _subscribe(topic: String, qos: Int, eventSink: EventSink?) {
-        mqttClient!!.subscribe(
+        instance._mqttAndroidClient!!.subscribe(
             topic,
             qos,
             null,
@@ -328,10 +325,10 @@ class MqttClient {
      */
     fun unSubscribeByReSubscribe(call: MethodCall, eventSink: EventSink?) {
         val topics = call.argument<List<Map<String, Any>>>("topics")
-        if (topics != null && mqttClient != null) {
+        if (topics != null && instance._mqttAndroidClient != null) {
             topics.forEachIndexed { index, s ->
                 val topic = s["topic"] as String
-                mqttClient!!.unsubscribe(topic, null, object : IMqttActionListener {
+                instance._mqttAndroidClient!!.unsubscribe(topic, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         val result: Map<String, Any?> =
                             mapOf(
@@ -366,21 +363,21 @@ class MqttClient {
      * 重连
      */
     fun reconnect(call: MethodCall, eventSink: EventSink?) {
-        if (mqttClient != null && !isConnect) {
+        if (instance._mqttAndroidClient != null && !isConnect) {
             try {
                 val clientId: String? = call.argument("clientId")
                 if (clientId != null) {
-                    if (mqttClient != null) {
-                        mqttClient?.close()
+                    if (instance._mqttAndroidClient != null) {
+                        instance._mqttAndroidClient?.close()
                     }
-                    mqttClient = null
+                    instance._mqttAndroidClient = null
                     this.isReconnect = true
                     connectData["clientId"] = clientId
                     _connect(eventSink)
                     return;
                 }
 
-                mqttClient!!.reconnect()
+                instance._mqttAndroidClient!!.reconnect()
 //                result.success(true)
             } catch (e: MqttException) {
                 e.printStackTrace()
@@ -396,11 +393,11 @@ class MqttClient {
      * 断开连接
      */
     fun disconnect(eventSink: EventSink?) {
-        if (mqttClient != null) {
+        if (instance._mqttAndroidClient != null) {
             try {
                 isConnect = false
-                mqttClient!!.close()
-                mqttClient = null
+                instance._mqttAndroidClient!!.close()
+                instance._mqttAndroidClient = null
 
                 _activity!!.runOnUiThread {
                     eventSink!!.success(
@@ -453,16 +450,33 @@ class MqttClient {
         val topic = call.argument<String>("topic")
         val message = call.argument<String>("message")
         val qos = call.argument<Int>("qos") ?: 0
-        if (mqttClient != null) {
+        if (instance._mqttAndroidClient != null) {
             try {
 
 
-                mqttClient!!.publish(topic!!, message!!.toByteArray(), qos, true)
+                instance._mqttAndroidClient!!.publish(topic!!, message!!.toByteArray(), qos, true)
             } catch (e: MqttException) {
                 e.printStackTrace()
             }
         }
 
+    }
+
+
+    /**
+     * 销毁
+     */
+    fun destroy() {
+        isConnect = false
+        isReconnect = false
+        if (instance._mqttAndroidClient != null) {
+            try {
+                instance._mqttAndroidClient!!.close()
+                instance._mqttAndroidClient = null
+            } catch (e: MqttException) {
+                e.printStackTrace()
+            }
+        }
     }
 
     // 构建一个notification

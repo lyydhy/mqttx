@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 
+
 class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBinding) :
     MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
     // Flutter 插件绑定对象
@@ -26,7 +27,7 @@ class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBindin
     }
 
     init {
-        MqttClient.instance.init(activity)
+        CustomMqttClient.instance.init(activity)
         this.activity = activity;
         this.bind = pluginBinding;
         _instance = this;
@@ -37,33 +38,33 @@ class MqttxPluginDelegate(activity: Activity, pluginBinding: FlutterPluginBindin
 
         when (call.method) {
             "connect" -> {
-                MqttClient.instance.connect(call, eventSink!!)
+                CustomMqttClient.instance.connect(call, eventSink!!)
             }
 
             "is_connected" -> {
-                MqttClient.instance.getStatus(result)
+                CustomMqttClient.instance.getStatus(result)
             }
 
             "subscribe" -> {
-                MqttClient.instance.subscribe(call, eventSink!!)
+                CustomMqttClient.instance.subscribe(call, eventSink!!)
             }
 
             "un_subscribe" -> {
-                MqttClient.instance.unSubscribe(call, eventSink!!)
+                CustomMqttClient.instance.unSubscribe(call, eventSink!!)
             }
 
             "reconnect" -> {
-                MqttClient.instance.reconnect(call,eventSink!!)
+                CustomMqttClient.instance.reconnect(call,eventSink!!)
             }
 
             "disconnect" -> {
-                MqttClient.instance.disconnect( eventSink!!)
+                CustomMqttClient.instance.disconnect( eventSink!!)
             }
             "publish" -> {
-                MqttClient.instance.publish(call, eventSink!!)
+                CustomMqttClient.instance.publish(call, eventSink!!)
             }
             "unSubscribeByReSubscribe" -> {
-                MqttClient.instance.unSubscribeByReSubscribe(call, eventSink!!)
+                CustomMqttClient.instance.unSubscribeByReSubscribe(call, eventSink!!)
             }
         }
     }
