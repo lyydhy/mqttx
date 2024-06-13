@@ -196,10 +196,14 @@ class CustomMqttClient {
         val reconnectTask = object : Runnable {
             override fun run() {
                 try {
+                    if (instance._mqttAndroidClient == null) {
+                        return
+                    }
                     val that = this
                     val options = MqttConnectOptions().apply {
                         isAutomaticReconnect = false // 关闭自动重连，因为我们手动处理
                     }
+
                     instance.isReconnecting = true
                     instance._mqttAndroidClient!!.connect(options, object : IMqttActionListener {
                         override fun onSuccess(asyncActionToken: IMqttToken) {
