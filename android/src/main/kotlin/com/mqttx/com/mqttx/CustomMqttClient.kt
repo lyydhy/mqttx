@@ -510,7 +510,7 @@ class CustomMqttClient {
             try {
 
 
-                instance._mqttAndroidClient!!.publish(topic!!, message!!.toByteArray(), qos, true)
+                instance._mqttAndroidClient!!.publish(topic!!, message!!.toByteArray(), qos, false)
             } catch (e: MqttException) {
                 e.printStackTrace()
             }
