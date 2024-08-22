@@ -57,6 +57,7 @@ class Mqttx {
 
   Future<void> disconnect() async {
     client?.disconnect();
+    client = null;
   }
 
   Future<bool> isConnected() async {
