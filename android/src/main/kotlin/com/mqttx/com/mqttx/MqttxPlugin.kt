@@ -33,6 +33,7 @@ class MqttxPlugin : FlutterPlugin, ActivityAware {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
+        CustomMqttClient.instance.destroy()
     }
 
 

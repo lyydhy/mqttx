@@ -10,6 +10,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Looper
+import android.util.Log
 import info.mqtt.android.service.Ack
 import info.mqtt.android.service.MqttAndroidClient
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -52,7 +53,7 @@ class CustomMqttClient {
      * 连接mqtt 服务
      */
     fun connect(call: MethodCall, eventSink: EventSink?) {
-        if (instance._mqttAndroidClient != null && instance._mqttAndroidClient?.isConnected == true) {
+        if (isConnect == true) {
             return
         }
         val server: String? = call.argument("server")
@@ -176,6 +177,7 @@ class CustomMqttClient {
                     val errMessage: String = exception?.message ?: "connect fail"
                     val result: Map<String, Any> =
                         mapOf("type" to "connect", "code" to "fail", "message" to errMessage)
+                    Log.d("MQTT", exception.toString())
                     _activity!!.runOnUiThread {
                         eventSink?.success(result);
                     }
